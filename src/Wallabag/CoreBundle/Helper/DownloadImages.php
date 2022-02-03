@@ -72,13 +72,16 @@ class DownloadImages
     {
         $imagesUrls = self::extractImagesUrlsFromHtml($html);
 
+        // ensure images aren't overlapping
+        arsort($imagesUrls);
+
         $relativePath = $this->getRelativePath($entryId);
 
         // download and save the image to the folder
         foreach ($imagesUrls as $image) {
-            $imagePath = $this->processSingleImage($entryId, $image, $url, $relativePath);
+            $newImage = $this->processSingleImage($entryId, $image, $url, $relativePath);
 
-            if (false === $imagePath) {
+            if (false === $newImage) {
                 continue;
             }
 
@@ -87,7 +90,12 @@ class DownloadImages
                 $image = str_replace('&', '&amp;', $image);
             }
 
-            $html = str_replace($image, $imagePath, $html);
+            // replace only the first occurence we found to avoid overlapping image
+            // which might have the same base url but with query parameters different
+            $pos = strpos($html, $image);
+            if (false !== $pos) {
+                $html = substr_replace($html, $newImage, $pos, \strlen($image));
+            }
         }
 
         return $html;
